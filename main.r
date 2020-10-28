@@ -1,6 +1,6 @@
 #loading packages
 if(!require("pacman")) install.packages("pacman")
-pacman::p_load(pacman,OpenImageR,reshape,tidyr,readr,splitstackshape)
+pacman::p_load(pacman,OpenImageR,reshape,tidyr,readr,splitstackshape,ggplot2)
 
 #loading functions defined in another file
 setwd("~/Desktop/facial_recognizer")
@@ -49,32 +49,49 @@ data.scaled = A - data.mean
 Eigenvectors = t(data.scaled)%*%Eigenvectors#Need for t(data.scaled) multiplication in order to recover Sigma long
 dim(data.scaled)
 length(eigenvalues)
-data.new = data.scaled%*%Eigenvectors[,1:35]
+
+
+
+
+
+data.new = data.scaled%*%Eigenvectors[,1:30]
 data.labeled = cbind(data.new, B)
-dim(data.new)
-dim(data.labeled)
-cov(data.new)
 #TODO podziałzestawu danych na treningowy i validacyjny (każda klasa tj. każde zdj musi być równie liczna))
 data.labeled.framed = as.data.frame(data.labeled)
-str = stratified(data.labeled.framed, 'V36',4,bothSets = T)
-train.data = str$SAMP1
-#train.labels = str$SAMP1[,36]
-test.data = str$SAMP2[,-36]
-test.labels = str$SAMP2[,36]
-
-#calling knn function
-params = 4
-vec = matrix(nrow = 50,ncol = 1)
-trafienia = 0
-for(p in 1:50)
+accsmean=rep(0,30)
+for(k in 1:30)
 {
-  img = test.data[p,]
-  vec[p,] = my_knn(img, train.data, params)
-  if(test.labels[p] == vec[p,]) trafienia = trafienia + 1
-}
-#cbind(vec,test.labels[1:50,])
-print(paste("dokladnosc testu:", trafienia/50))
 
+  accs=rep(0,10)
+  for (i in 1:10)
+  {
+    str = stratified(data.labeled.framed, paste('V',31, sep=''),4,bothSets = T)
+    train.data = str$SAMP1
+    test.data = str$SAMP2[,-31]
+    test.labels = str$SAMP2[,31]
+
+    #calling knn function
+    vec = matrix(nrow = 50,ncol = 1)
+    hits = 0
+    for(p in 1:50)
+    {
+      img = test.data[p,]
+      vec[p,] = my_knn(img, train.data, k)
+      if(test.labels[p] == vec[p,]) hits = hits + 1
+    }
+    accs[i]= hits/50
+  }
+  accsmean[k] = mean(accs)
+}
+accsmean = data.frame(
+  "k"=1:30,
+  "accuracy" =c(accsmean))
+accsmean
+dim(accsmean)
+ggplot(data=accsmean, aes(x=k,y=accsmean))+geom_line()+geom_point()+scale_x_continuous(breaks = seq(0, 30, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1))
+
+accsmean
 #TODO pamietać o czyms jak thres hold stworoznym na podstawie macierzy odleglosci zdjec od siebie
 
   
@@ -82,3 +99,4 @@ print(paste("dokladnosc testu:", trafienia/50))
 rm(list = ls())
 dev.off()
 cat("\014")
+
